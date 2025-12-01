@@ -79,7 +79,7 @@ export default function Auth() {
               className="h-16 w-auto"
             />
           </div>
-          <CardTitle className="text-2xl">PesoWise</CardTitle>
+          <CardTitle className="text-2xl">PesoWise - Powered by Unimisk</CardTitle>
           <CardDescription>
             Petty Cash management app
           </CardDescription>
