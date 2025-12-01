@@ -47,7 +47,7 @@ export default function UserManagement() {
   const [listLoading, setListLoading] = useState(false);
   const [engineers, setEngineers] = useState<{ id: string; name: string; email: string }[]>([]);
   const [cashiers, setCashiers] = useState<{ id: string; name: string; email: string }[]>([]);
-  const [users, setUsers] = useState<{ user_id: string; name: string; email: string; balance: number; role: string; assigned_engineer_name?: string; cashier_assigned_engineer_name?: string; cashier_assigned_location_id?: string; assigned_cashier_name?: string; cashier_assigned_engineer_id?: string; reporting_engineer_id?: string }[]>([]);
+  const [users, setUsers] = useState<{ user_id: string; name: string; email: string; balance: number; role: string; assigned_engineer_name?: string; cashier_assigned_engineer_name?: string; cashier_assigned_location_id?: string; cashier_assigned_location_name?: string; assigned_cashier_name?: string; cashier_assigned_engineer_id?: string; reporting_engineer_id?: string }[]>([]);
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [engineerLocations, setEngineerLocations] = useState<Record<string, string>>({}); // engineer_id -> location_id (single location only)
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -234,6 +234,24 @@ export default function UserManagement() {
           }
         }
 
+        // Fetch location names for cashiers
+        const cashierLocationIds = [...new Set((profiles || [])
+          .map(p => (p as any).cashier_assigned_location_id)
+          .filter(id => id !== null && id !== undefined))];
+        
+        let locationNamesById: Record<string, string> = {};
+        if (cashierLocationIds.length > 0) {
+          const { data: locationData, error: locationError } = await supabase
+            .from("locations")
+            .select("id, name")
+            .in("id", cashierLocationIds);
+          if (!locationError && locationData) {
+            locationData.forEach(loc => {
+              locationNamesById[loc.id] = loc.name;
+            });
+          }
+        }
+
         const combined = (profiles || []).map(p => ({
           user_id: p.user_id,
           name: (p as any).name || "",
@@ -247,6 +265,9 @@ export default function UserManagement() {
             ? engineerNamesById[(p as any).cashier_assigned_engineer_id] || "Unknown"
             : undefined,
           cashier_assigned_location_id: (p as any).cashier_assigned_location_id || undefined,
+          cashier_assigned_location_name: (p as any).cashier_assigned_location_id
+            ? locationNamesById[(p as any).cashier_assigned_location_id] || "Unknown"
+            : undefined,
           assigned_cashier_name: (p as any).assigned_cashier_id
             ? cashierNamesById[(p as any).assigned_cashier_id] || "Unknown"
             : undefined,
@@ -1381,7 +1402,9 @@ export default function UserManagement() {
                       <th className="px-2 sm:px-4 py-2 sm:py-3 font-semibold text-slate-700 bg-slate-50 min-w-[140px]">Name / Email</th>
                       <th className="px-2 sm:px-4 py-2 sm:py-3 font-semibold text-slate-700 bg-slate-50 min-w-[120px] hidden sm:table-cell">Email</th>
                       <th className="px-2 sm:px-4 py-2 sm:py-3 font-semibold text-slate-700 bg-slate-50 min-w-[100px]">Role</th>
-                      <th className="px-2 sm:px-4 py-2 sm:py-3 font-semibold text-slate-700 bg-slate-50 min-w-[120px] hidden md:table-cell">Assigned Manager</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 font-semibold text-slate-700 bg-slate-50 min-w-[120px] hidden md:table-cell">
+                        Assigned Manager
+                      </th>
                       <th className="px-2 sm:px-4 py-2 sm:py-3 font-semibold text-slate-700 bg-slate-50 min-w-[100px] hidden sm:table-cell">Balance</th>
                       <th className="px-2 sm:px-4 py-2 sm:py-3 font-semibold text-slate-700 text-right bg-slate-50 min-w-[120px]">Balance / Actions</th>
                   </tr>
@@ -1418,7 +1441,7 @@ export default function UserManagement() {
                         <td className="px-2 sm:px-4 py-2 sm:py-3 hidden sm:table-cell">{u.email || "-"}</td>
                         <td className="px-2 sm:px-4 py-2 sm:py-3">
                           <span className="inline-flex items-center px-2 py-1 rounded bg-slate-100 text-slate-700 text-xs font-medium">
-                            {u.role}
+                            {u.role === "engineer" ? "Manager" : u.role.charAt(0).toUpperCase() + u.role.slice(1)}
                           </span>
                         </td>
                         <td className="px-2 sm:px-4 py-2 sm:py-3 hidden md:table-cell">
@@ -1429,8 +1452,8 @@ export default function UserManagement() {
                               <span className="text-slate-400 italic">Not assigned</span>
                             )
                           ) : u.role === "cashier" ? (
-                            u.cashier_assigned_engineer_name ? (
-                              <span className="text-slate-700 font-medium">{u.cashier_assigned_engineer_name}</span>
+                            u.cashier_assigned_location_name ? (
+                              <span className="text-slate-700 font-medium">{u.cashier_assigned_location_name}</span>
                             ) : (
                               <span className="text-slate-400 italic">Not assigned</span>
                             )
@@ -1521,7 +1544,7 @@ export default function UserManagement() {
 
                     {/* Hierarchy View by Location */}
                     {filteredHierarchyByLocation.length === 0 && filteredUnassignedEngineers.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">No engineers found</div>
+                      <div className="text-center py-8 text-gray-500">No managers found</div>
                     ) : (
                       <div className="space-y-6 sm:space-y-8">
                         {/* Locations with Engineers */}
@@ -2031,7 +2054,7 @@ export default function UserManagement() {
                       onValueChange={(value) => setFormData(prev => ({ ...prev, reportingEngineerId: value }))}
                     >
                          <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-colors duration-150">
-                        <SelectValue placeholder="Select engineer" />
+                        <SelectValue placeholder="Select manager" />
                       </SelectTrigger>
                       <SelectContent className="border-0 shadow-xl">
                         <SelectItem value="none">Unassigned</SelectItem>
@@ -2110,8 +2133,8 @@ export default function UserManagement() {
                            disabled={formData.cashierAssignedLocationId && formData.cashierAssignedLocationId !== "none"}
                          >
                            <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-colors duration-150">
-                             <SelectValue placeholder="Select engineer" />
-                           </SelectTrigger>
+                            <SelectValue placeholder="Select manager" />
+                          </SelectTrigger>
                            <SelectContent className="border-0 shadow-xl">
                              <SelectItem value="none">Unassigned (Can manage all)</SelectItem>
                              {engineers.filter(e => {

@@ -695,7 +695,7 @@ export default function Balances() {
                     <TableCell>{r.email}</TableCell>
                     <TableCell>
                       <Badge variant={r.role === 'admin' ? 'destructive' : r.role === 'engineer' ? 'default' : r.role === 'cashier' ? 'secondary' : 'outline'}>
-                        {r.role.charAt(0).toUpperCase() + r.role.slice(1)}
+                        {r.role === 'engineer' ? 'Manager' : r.role.charAt(0).toUpperCase() + r.role.slice(1)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">

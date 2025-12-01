@@ -185,17 +185,17 @@ export function MobileExpenseTable({
                         <SelectContent>
                           <SelectItem value="approved">Approve</SelectItem>
                           <SelectItem value="rejected">Reject</SelectItem>
-                          <SelectItem value="under_review">Assign to Engineer</SelectItem>
+                          <SelectItem value="under_review">Assign to Manager</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     
                     {selectedStatus === "under_review" && (
                       <div className="w-full">
-                        <label className="text-sm font-medium mb-2 block">Select Engineer</label>
+                        <label className="text-sm font-medium mb-2 block">Select Manager</label>
                         <Select value={selectedEngineer} onValueChange={setSelectedEngineer}>
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select engineer" />
+                            <SelectValue placeholder="Select manager" />
                           </SelectTrigger>
                           <SelectContent>
                             {engineers.map((engineer) => (
@@ -226,7 +226,7 @@ export function MobileExpenseTable({
                     >
                       {selectedStatus === "approved" && "Approve Expense"}
                       {selectedStatus === "rejected" && "Reject Expense"}
-                      {selectedStatus === "under_review" && "Assign to Engineer"}
+                      {selectedStatus === "under_review" && "Assign to Manager"}
                       {!selectedStatus && "Select Action"}
                     </Button>
                   </DialogFooter>
