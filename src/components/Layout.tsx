@@ -153,10 +153,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 />
               <div className="flex-1 min-w-0 overflow-hidden">
                 <h1 className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 truncate">
-                  Expense Management
+                  PesoWise
                 </h1>
                 <p className="text-xs text-gray-500 hidden sm:block truncate">
-                    Bikes Auto - Hero MotoCorp
+                    Petty Cash management app
                 </p>
                 </div>
               </div>

@@ -24,6 +24,7 @@ export default function Settings() {
   
   // Admin settings
   const [engineerApprovalLimit, setEngineerApprovalLimit] = useState<string>("50000");
+  const [attachmentRequiredAboveAmount, setAttachmentRequiredAboveAmount] = useState<string>("50");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -59,25 +60,32 @@ export default function Settings() {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data: settingsData, error } = await supabase
         .from("settings")
         .select("*")
-        .eq("key", "engineer_approval_limit")
-        .maybeSingle();
+        .in("key", ["engineer_approval_limit", "attachment_required_above_amount"]);
 
       if (error) {
         // If table doesn't exist, show helpful message
         if (error.code === '42P01' || error.message.includes('does not exist')) {
           console.warn("Settings table does not exist. Please run the SQL migration first.");
-          // Keep default value of 50000
+          // Keep default values
           setLoading(false);
           return;
         }
         throw error;
       }
 
-      if (data) {
-        setEngineerApprovalLimit(data.value);
+      if (settingsData) {
+        const approvalLimit = settingsData.find(s => s.key === "engineer_approval_limit");
+        const attachmentLimit = settingsData.find(s => s.key === "attachment_required_above_amount");
+        
+        if (approvalLimit) {
+          setEngineerApprovalLimit(approvalLimit.value);
+        }
+        if (attachmentLimit) {
+          setAttachmentRequiredAboveAmount(attachmentLimit.value);
+        }
       }
     } catch (error: any) {
       console.error("Error fetching settings:", error);
@@ -98,25 +106,43 @@ export default function Settings() {
     try {
       setSaving(true);
       const limitValue = parseFloat(engineerApprovalLimit);
+      const attachmentLimitValue = parseFloat(attachmentRequiredAboveAmount);
       
       if (isNaN(limitValue) || limitValue < 0) {
         toast({
           variant: "destructive",
           title: "Invalid Input",
-          description: "Please enter a valid positive number",
+          description: "Please enter a valid positive number for Manager Approval Limit",
         });
         return;
       }
 
-      // Upsert the setting
+      if (isNaN(attachmentLimitValue) || attachmentLimitValue < 0) {
+        toast({
+          variant: "destructive",
+          title: "Invalid Input",
+          description: "Please enter a valid positive number for Attachment Required Above Amount",
+        });
+        return;
+      }
+
+      // Upsert both settings
       const { error } = await supabase
         .from("settings")
-        .upsert({
-          key: "engineer_approval_limit",
-          value: limitValue.toString(),
-          description: "Maximum amount (in rupees) that engineers can approve directly. Expenses below this limit can be approved by engineers, above this limit must go to admin.",
-          updated_at: new Date().toISOString(),
-        }, {
+        .upsert([
+          {
+            key: "engineer_approval_limit",
+            value: limitValue.toString(),
+            description: "Maximum amount (in rupees) that engineers can approve directly. Expenses below this limit can be approved by engineers, above this limit must go to admin.",
+            updated_at: new Date().toISOString(),
+          },
+          {
+            key: "attachment_required_above_amount",
+            value: attachmentLimitValue.toString(),
+            description: "Amount threshold (in rupees) above which bill attachments become mandatory. Expenses at or below this amount do not require attachments.",
+            updated_at: new Date().toISOString(),
+          }
+        ], {
           onConflict: "key"
         });
 
@@ -134,7 +160,7 @@ export default function Settings() {
 
       toast({
         title: "Settings Saved",
-        description: "Manager approval limit has been updated successfully",
+        description: "Settings have been updated successfully",
       });
     } catch (error: any) {
       console.error("Error saving settings:", error);
@@ -491,6 +517,24 @@ export default function Settings() {
                   <p className="text-sm text-muted-foreground">
                     Expenses below {formatINR(parseFloat(engineerApprovalLimit) || 0)} can be approved directly by managers.
                     Expenses at or above this limit must be verified by managers and then approved by administrators.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="attachment-limit">Attachment Required Above Amount (₹)</Label>
+                  <Input
+                    id="attachment-limit"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={attachmentRequiredAboveAmount}
+                    onChange={(e) => setAttachmentRequiredAboveAmount(e.target.value)}
+                    placeholder="50"
+                    className="max-w-xs"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Expenses above {formatINR(parseFloat(attachmentRequiredAboveAmount) || 0)} require bill attachments.
+                    Expenses at or below this amount do not require attachments.
                   </p>
                 </div>
 

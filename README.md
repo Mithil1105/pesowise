@@ -1,28 +1,28 @@
-# Travel Expense Management System
+# PesoWise - Petty Cash management app
 
-A comprehensive web application for managing company travel expenses with role-based access control, approval workflows, and audit logging.
+A comprehensive web application for managing petty cash expenses with role-based access control, approval workflows, and audit logging.
 s
 ## 🚀 Features
 
 ### Core Functionality
 - **Admin-only user creation** - Only administrators can create new user accounts
-- **Expense draft/submit flow** - Employees can create drafts and submit for review
-- **Assign→Verify→Approve lifecycle** - Engineers verify, admins approve expenses
+- **Petty cash draft/submit flow** - Employees can create drafts and submit for review
+- **Assign→Verify→Approve lifecycle** - Engineers verify, admins approve petty cash expenses
 - **File upload validation** - PDF, PNG, JPG files ≤10MB with proper validation
 - **Role-based access control (RBAC)** - Admin, Engineer, Employee roles with proper permissions
 - **Comprehensive audit logging** - All actions tracked for compliance
 - **Backend total computation** - Automatic calculation of expense totals
 
 ### User Roles
-- **Admin**: Full system access, user management, expense approval
-- **Engineer**: Review and verify assigned expenses, add comments
-- **Employee**: Create and submit expense claims, view own expenses
+- **Admin**: Full system access, user management, petty cash approval
+- **Engineer**: Review and verify assigned petty cash expenses, add comments
+- **Employee**: Create and submit petty cash claims, view own expenses
 
-### Expense Workflow
-1. **Draft** → Employee creates expense with line items
+### Petty Cash Workflow
+1. **Draft** → Employee creates petty cash expense with line items
 2. **Submitted** → Employee submits for review
 3. **Under Review** → Admin assigns to engineer (optional)
-4. **Verified** → Engineer verifies expenses
+4. **Verified** → Engineer verifies petty cash expenses
 5. **Approved/Rejected** → Admin makes final decision
 6. **Paid** → Accounting processes payment
 
@@ -136,8 +136,8 @@ The API is documented using OpenAPI 3.0 specification. View the complete documen
 ### Key API Endpoints
 
 - `POST /auth/login` - User authentication
-- `POST /expenses` - Create expense
-- `POST /expenses/{id}/submit` - Submit expense
+- `POST /expenses` - Create petty cash expense
+- `POST /expenses/{id}/submit` - Submit petty cash expense
 - `POST /expenses/{id}/verify` - Engineer verification
 - `POST /expenses/{id}/approve` - Admin approval
 - `POST /expenses/{id}/attachments` - Upload receipts
@@ -159,12 +159,12 @@ src/
 ├── pages/             # Page components
 │   ├── Auth.tsx       # Login page
 │   ├── Dashboard.tsx  # User dashboard
-│   ├── ExpenseForm.tsx # Create/edit expenses
+│   ├── ExpenseForm.tsx # Create/edit petty cash expenses
 │   ├── AdminPanel.tsx # Admin management
 │   ├── EngineerReview.tsx # Engineer verification
 │   └── ...
 ├── services/          # Business logic services
-│   └── ExpenseService.ts # Expense management logic
+│   └── ExpenseService.ts # Petty cash management logic
 ├── test/             # Test utilities and setup
 └── lib/              # Utility functions
 ```
@@ -254,14 +254,14 @@ For support and questions:
 
 ## 🔄 Recent Updates
 
-### v1.0.0 - Complete Expense Flow Implementation
+### v1.0.0 - Complete Petty Cash Flow Implementation
 - ✅ Admin-only user creation with proper validation
-- ✅ Complete expense draft/submit workflow
+- ✅ Complete petty cash draft/submit workflow
 - ✅ Engineer verification and admin approval process
 - ✅ File upload with PDF/JPG/PNG validation (≤10MB)
 - ✅ Comprehensive RBAC with backend validation
 - ✅ Full audit logging for all actions
-- ✅ Backend total computation for expenses
+- ✅ Backend total computation for petty cash expenses
 - ✅ Unit and integration test coverage
 - ✅ OpenAPI documentation
 - ✅ Updated README with setup instructions
@@ -273,6 +273,8 @@ For support and questions:
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
-#   p e s o w i s e  
- #   p e s o w i s e  
+#   p e s o w i s e 
+ 
+ #   p e s o w i s e 
+ 
  

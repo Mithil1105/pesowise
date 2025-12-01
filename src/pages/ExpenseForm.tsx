@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { CalendarIcon, Save, Send } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { formatINR } from "@/lib/format";
 import { FileUpload } from "@/components/FileUpload";
 import { ExpenseService, CreateExpenseData, UpdateExpenseData } from "@/services/ExpenseService";
 import { z } from "zod";
@@ -66,6 +67,8 @@ export default function ExpenseForm() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [addCatOpen, setAddCatOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [attachmentRequiredAboveAmount, setAttachmentRequiredAboveAmount] = useState<number>(50); // Default ₹50
+  const [isAttachmentRequired, setIsAttachmentRequired] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -87,6 +90,20 @@ export default function ExpenseForm() {
             .maybeSingle();
           setIsAdmin(!!role);
         }
+
+        // Fetch attachment required above amount setting
+        const { data: attachmentLimitSetting } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'attachment_required_above_amount')
+          .maybeSingle();
+        
+        if (attachmentLimitSetting) {
+          const limit = parseFloat(attachmentLimitSetting.value);
+          if (!isNaN(limit) && limit >= 0) {
+            setAttachmentRequiredAboveAmount(limit);
+          }
+        }
       } finally {
         setLoadingCategories(false);
       }
@@ -97,6 +114,16 @@ export default function ExpenseForm() {
       setIsEditing(true);
     }
   }, [id]);
+
+  // Update attachment requirement based on amount
+  useEffect(() => {
+    const amount = expense.amount || 0;
+    const required = amount > attachmentRequiredAboveAmount;
+    setIsAttachmentRequired(required);
+    
+    // If amount is below limit and attachments exist, clear them (optional - you may want to keep existing)
+    // For now, we'll just disable the field but keep existing attachments
+  }, [expense.amount, attachmentRequiredAboveAmount]);
 
   const fetchExpense = async () => {
     try {
@@ -271,31 +298,40 @@ export default function ExpenseForm() {
         expense_date: expense.expense_date,
       });
 
-      // Check if bill photos are uploaded for submission
-      if (!isEditing && attachments.length === 0) {
-        // For new expenses, require attachments
-        throw new Error("Bill photos are required for expense submission. Please upload at least one photo of your receipt or bill.");
-      }
-      
-      // For editing, check if there are any attachments (existing in DB or new temp files)
-      if (isEditing && id) {
-        // Fetch current attachments count from database
-        const { data: existingAttachments } = await supabase
-          .from("attachments")
-          .select("id")
-          .eq("expense_id", id);
-        
-        // Check for temp files that will be moved
-        const { data: tempFiles } = await supabase.storage
-          .from('receipts')
-          .list(`temp/${user.id}`, { limit: 100 });
-        
-        const existingCount = existingAttachments?.length || 0;
-        const newTempFilesCount = tempFiles?.length || 0;
-        const totalAttachments = existingCount + newTempFilesCount;
-        
-        if (totalAttachments === 0) {
-          throw new Error("Bill photos are required for expense submission. Please upload at least one photo of your receipt or bill.");
+      // Check if bill photos are required based on amount
+      const expenseAmount = validatedExpense.amount;
+      const requiresAttachment = expenseAmount > attachmentRequiredAboveAmount;
+
+      if (requiresAttachment) {
+        // For new expenses, check if attachments exist
+        if (!isEditing) {
+          // Check for temp files
+          const { data: tempFiles } = await supabase.storage
+            .from('receipts')
+            .list(`temp/${user.id}`, { limit: 100 });
+          
+          if (!tempFiles || tempFiles.length === 0) {
+            throw new Error(`Bill photos are required for expenses above ₹${attachmentRequiredAboveAmount}. Please upload at least one photo of your receipt or bill.`);
+          }
+        } else if (id) {
+          // For editing, check if there are any attachments (existing in DB or new temp files)
+          const { data: existingAttachments } = await supabase
+            .from("attachments")
+            .select("id")
+            .eq("expense_id", id);
+          
+          // Check for temp files that will be moved
+          const { data: tempFiles } = await supabase.storage
+            .from('receipts')
+            .list(`temp/${user.id}`, { limit: 100 });
+          
+          const existingCount = existingAttachments?.length || 0;
+          const newTempFilesCount = tempFiles?.length || 0;
+          const totalAttachments = existingCount + newTempFilesCount;
+          
+          if (totalAttachments === 0) {
+            throw new Error(`Bill photos are required for expenses above ₹${attachmentRequiredAboveAmount}. Please upload at least one photo of your receipt or bill.`);
+          }
         }
       }
 
@@ -505,45 +541,60 @@ export default function ExpenseForm() {
         {/* Line Items removed from the creation form */}
       </div>
 
-      {/* File Upload Section - Required for Submission */}
+      {/* File Upload Section - Conditionally Required */}
       <div className="mt-8 flex justify-center">
-        <Card className="w-full max-w-2xl">
+        <Card className={`w-full max-w-2xl ${!isAttachmentRequired ? 'opacity-75' : ''}`}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               Bill Photos
-              <span className="text-red-500 text-sm font-normal">* Required for submission</span>
+              {isAttachmentRequired && (
+                <span className="text-red-500 text-sm font-normal">* Required</span>
+              )}
             </CardTitle>
             <CardDescription>
-              Upload photos of your receipts and bills. At least one photo is required to submit the expense.
+              {isAttachmentRequired 
+                ? `Upload photos of your receipts and bills. Required for expenses above ${formatINR(attachmentRequiredAboveAmount)}.`
+                : `Upload photos of your receipts and bills (optional for expenses up to ${formatINR(attachmentRequiredAboveAmount)}).`
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ErrorBoundary>
-              <FileUpload 
-                expenseId={currentExpenseId || id!} 
-                onUploadComplete={(attachment) => {
-                  if (attachment && attachment.file_url) {
-                    setAttachments(prev => [...prev, attachment.file_url]);
-                    toast({
-                      title: "Bill photo uploaded",
-                      description: "Photo has been attached to this expense",
-                    });
-                  }
-                }}
-                required={true}
-              />
+              <div className={isAttachmentRequired ? "" : "pointer-events-none opacity-50"}>
+                <FileUpload 
+                  expenseId={currentExpenseId || id!} 
+                  onUploadComplete={(attachment) => {
+                    if (attachment && attachment.file_url) {
+                      setAttachments(prev => [...prev, attachment.file_url]);
+                      toast({
+                        title: "Bill photo uploaded",
+                        description: "Photo has been attached to this expense",
+                      });
+                    }
+                  }}
+                  required={isAttachmentRequired}
+                />
+              </div>
             </ErrorBoundary>
-            {attachments.length > 0 && (
+            {!isAttachmentRequired && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-800">
+                  ℹ️ Bills above {formatINR(attachmentRequiredAboveAmount)} require an attachment (configured by admin). 
+                  Your current amount ({formatINR(expense.amount || 0)}) does not require attachments.
+                </p>
+              </div>
+            )}
+            {isAttachmentRequired && attachments.length > 0 && (
               <div className="mt-4">
                 <p className="text-sm text-green-600 font-medium">
                   ✓ {attachments.length} bill photo{attachments.length > 1 ? 's' : ''} uploaded
                 </p>
               </div>
             )}
-            {attachments.length === 0 && (
+            {isAttachmentRequired && attachments.length === 0 && (
               <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                 <p className="text-sm text-yellow-800">
-                  ⚠️ You must upload at least one bill photo to submit this expense.
+                  ⚠️ You must upload at least one bill photo for expenses above {formatINR(attachmentRequiredAboveAmount)}.
                 </p>
               </div>
             )}

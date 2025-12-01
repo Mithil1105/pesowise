@@ -164,6 +164,37 @@ export class ExpenseService {
 
     if (fetchError) throw fetchError;
 
+    // Check if attachments are required based on amount
+    // @ts-ignore - settings table exists but not in types
+    const { data: attachmentLimitSetting } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "attachment_required_above_amount")
+      .maybeSingle();
+    
+    const attachmentLimit = attachmentLimitSetting ? parseFloat((attachmentLimitSetting as any).value) : 50; // Default ₹50
+    const expenseAmount = Number(expense.total_amount);
+    const requiresAttachment = expenseAmount > attachmentLimit;
+
+    if (requiresAttachment) {
+      // Check if expense has attachments
+      const { data: attachments, error: attachmentsError } = await supabase
+        .from("attachments")
+        .select("id")
+        .eq("expense_id", expenseId)
+        .limit(1);
+
+      if (attachmentsError) {
+        console.error("Error checking attachments:", attachmentsError);
+        // Don't block submission if we can't check attachments, but log it
+      } else if (!attachments || attachments.length === 0) {
+        throw new Error(
+          `Bill photos are required for expenses above ₹${attachmentLimit}. ` +
+          `This expense (₹${expenseAmount}) exceeds the limit. Please upload at least one photo of your receipt or bill.`
+        );
+      }
+    }
+
     // Check if user is an admin and this is their own expense - if so, auto-approve and auto-deduct
     const isAdmin = await this.hasRole(userId, "admin");
     

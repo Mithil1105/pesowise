@@ -79,9 +79,9 @@ export default function Auth() {
               className="h-16 w-auto"
             />
           </div>
-          <CardTitle className="text-2xl">Expense Manager</CardTitle>
+          <CardTitle className="text-2xl">PesoWise</CardTitle>
           <CardDescription>
-            Sign in to manage your expenses
+            Petty Cash management app
           </CardDescription>
         </CardHeader>
         <CardContent>

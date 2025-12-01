@@ -194,7 +194,7 @@ describe('Expense Flow Integration Tests', () => {
   })
 
   describe('AdminPanel', () => {
-    it('should render admin panel with expense management', () => {
+    it('should render admin panel with petty cash management', () => {
       // Mock admin role
       vi.mocked(require('@/contexts/AuthContext').useAuth).mockReturnValue({
         user: { id: 'admin-1', email: 'admin@test.com' },
