@@ -80,30 +80,37 @@ export function MobileExpenseTable({
                 <p className="text-xs text-gray-500 truncate">{expense.user_name}</p>
               </div>
               <div className="text-right flex-shrink-0 ml-2">
-                <p className="font-bold text-sm">{formatINR(expense.total_amount)}</p>
-                <StatusBadge status={expense.status as any} />
+                <p className="font-bold text-sm">{formatINR(expense.total_amount ?? 0)}</p>
+                <StatusBadge status={(expense.status || "draft") as any} />
               </div>
             </div>
-            
+
             {/* Details */}
             <div className="space-y-2 text-xs text-gray-600">
               <div className="flex justify-between">
                 <span>Destination:</span>
-                <span className="truncate ml-2">{expense.destination}</span>
+                <span className="truncate ml-2">{expense.destination || "N/A"}</span>
               </div>
               <div className="flex justify-between">
                 <span>Employee Balance:</span>
-                <span className={`font-medium ${
-                  expense.user_balance >= expense.total_amount 
-                    ? 'text-green-600' 
+                <span className={`font-medium ${(expense.user_balance ?? 0) >= (expense.total_amount ?? 0)
+                    ? 'text-green-600'
                     : 'text-red-600'
-                }`}>
-                  {formatINR(expense.user_balance)}
+                  }`}>
+                  {formatINR(expense.user_balance ?? 0)}
                 </span>
               </div>
+              {expense.trip_start && expense.trip_end && (
+                <div className="flex justify-between">
+                  <span>Trip Dates:</span>
+                  <span className="truncate ml-2">
+                    {format(new Date(expense.trip_start), "MMM d")} - {format(new Date(expense.trip_end), "MMM d, yyyy")}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>Created:</span>
-                <span>{format(new Date(expense.created_at), "MMM d, yyyy")}</span>
+                <span>{expense.created_at ? format(new Date(expense.created_at), "MMM d, yyyy") : "N/A"}</span>
               </div>
             </div>
 
@@ -123,58 +130,60 @@ export function MobileExpenseTable({
                       Review and manage this expense submission
                     </DialogDescription>
                   </DialogHeader>
-                  
+
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="text-sm font-medium">Employee</label>
-                        <p className="text-sm text-muted-foreground">{expense.user_name}</p>
-                        <p className="text-xs text-gray-500">{expense.user_email}</p>
+                        <p className="text-sm text-muted-foreground">{expense.user_name || "Unknown User"}</p>
+                        <p className="text-xs text-gray-500">{expense.user_email || "N/A"}</p>
                       </div>
                       <div>
                         <label className="text-sm font-medium">Amount</label>
-                        <p className="text-sm text-muted-foreground">{formatINR(expense.total_amount)}</p>
+                        <p className="text-sm text-muted-foreground">{formatINR(expense.total_amount ?? 0)}</p>
                       </div>
                       <div>
                         <label className="text-sm font-medium">Status</label>
                         <div className="mt-1">
-                          <StatusBadge status={expense.status as any} />
+                          <StatusBadge status={(expense.status || "draft") as any} />
                         </div>
                       </div>
                       <div>
                         <label className="text-sm font-medium">Created</label>
-                        <p className="text-sm text-muted-foreground">{format(new Date(expense.created_at), "MMM d, yyyy")}</p>
+                        <p className="text-sm text-muted-foreground">{expense.created_at ? format(new Date(expense.created_at), "MMM d, yyyy") : "N/A"}</p>
                       </div>
                     </div>
-                    
+
                     <div>
                       <label className="text-sm font-medium">Title</label>
-                      <p className="text-sm text-muted-foreground">{expense.title}</p>
+                      <p className="text-sm text-muted-foreground">{expense.title || "N/A"}</p>
                     </div>
-                    
+
                     <div>
                       <label className="text-sm font-medium">Destination</label>
-                      <p className="text-sm text-muted-foreground">{expense.destination}</p>
+                      <p className="text-sm text-muted-foreground">{expense.destination || "N/A"}</p>
                     </div>
-                    
+
                     <div>
                       <label className="text-sm font-medium">Purpose</label>
                       <p className="text-sm text-muted-foreground">{expense.purpose || "No purpose provided"}</p>
                     </div>
-                    
-                    <div>
-                      <label className="text-sm font-medium">Trip Dates</label>
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(expense.trip_start), "MMM d, yyyy")} - {format(new Date(expense.trip_end), "MMM d, yyyy")}
-                      </p>
-                    </div>
-                    
+
+                    {expense.trip_start && expense.trip_end && (
+                      <div>
+                        <label className="text-sm font-medium">Trip Dates</label>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(expense.trip_start), "MMM d, yyyy")} - {format(new Date(expense.trip_end), "MMM d, yyyy")}
+                        </p>
+                      </div>
+                    )}
+
                     <div>
                       <label className="text-sm font-medium">Admin Comment</label>
                       <p className="text-sm text-muted-foreground">{expense.admin_comment || "No comment"}</p>
                     </div>
                   </div>
-                  
+
                   <DialogFooter className="flex flex-col gap-3">
                     <div className="w-full">
                       <label className="text-sm font-medium mb-2 block">Action</label>
@@ -189,7 +198,7 @@ export function MobileExpenseTable({
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     {selectedStatus === "under_review" && (
                       <div className="w-full">
                         <label className="text-sm font-medium mb-2 block">Select Manager</label>
@@ -207,7 +216,7 @@ export function MobileExpenseTable({
                         </Select>
                       </div>
                     )}
-                    
+
                     <div className="w-full">
                       <label className="text-sm font-medium mb-2 block">Comment (Optional)</label>
                       <Textarea
@@ -218,7 +227,7 @@ export function MobileExpenseTable({
                         rows={3}
                       />
                     </div>
-                    
+
                     <Button
                       onClick={handleAction}
                       className="w-full"

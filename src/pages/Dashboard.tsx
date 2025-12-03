@@ -279,13 +279,24 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      // Fetch expenses for the user
-      const { data: expenses, error: expensesError } = await supabase
-        .from("expenses")
-        .select("*")
-        .eq("user_id", user?.id);
-
-      if (expensesError) throw expensesError;
+      // For admins, fetch ALL expenses. For others, fetch only their expenses
+      let expenses: any[] = [];
+      if (userRole === "admin") {
+        const { data: allExpenses, error: expensesError } = await supabase
+          .from("expenses")
+          .select("*");
+        
+        if (expensesError) throw expensesError;
+        expenses = allExpenses || [];
+      } else {
+        const { data: userExpenses, error: expensesError } = await supabase
+          .from("expenses")
+          .select("*")
+          .eq("user_id", user?.id);
+        
+        if (expensesError) throw expensesError;
+        expenses = userExpenses || [];
+      }
 
       // Fetch user profile for balance
       const { data: profile, error: profileError } = await supabase
@@ -367,53 +378,52 @@ export default function Dashboard() {
           );
         }
 
-        // Fetch total balances for employees, engineers, and cashiers (only for admin)
+        // Calculate total balances from expenses data (sum of expenses by role)
         try {
-          // Get all user roles
+          // Get all user roles to map user_id to role
           const { data: allRoles, error: rolesError } = await supabase
             .from("user_roles")
             .select("user_id, role");
 
           if (!rolesError && allRoles) {
-            // Get all profiles with balances
-            const userIds = allRoles.map(r => r.user_id);
-            const { data: allProfiles, error: profilesError } = await supabase
-              .from("profiles")
-              .select("user_id, balance")
-              .in("user_id", userIds);
-
-            if (!profilesError && allProfiles) {
-              // Create a map of user_id to role
-              const userRoleMap = new Map(allRoles.map(r => [r.user_id, r.role]));
+            // Create a map of user_id to role
+            const userRoleMap = new Map(allRoles.map(r => [r.user_id, r.role]));
+            
+            // Calculate totals from expenses by role
+            expenses.forEach(expense => {
+              const role = userRoleMap.get(expense.user_id);
+              const amount = Number(expense.total_amount || 0);
               
-              // Calculate totals by role
-              allProfiles.forEach(p => {
-                const role = userRoleMap.get(p.user_id);
-                const balance = Number(p.balance || 0);
-                
-                if (role === "employee") {
-                  totalEmployeeBalance += balance;
-                } else if (role === "engineer") {
-                  totalEngineerBalance += balance;
-                } else if (role === "cashier") {
-                  totalCashierBalance += balance;
-                }
-              });
-            }
+              if (role === "employee") {
+                totalEmployeeBalance += amount;
+              } else if (role === "engineer") {
+                totalEngineerBalance += amount;
+              } else if (role === "cashier") {
+                totalCashierBalance += amount;
+              }
+            });
           }
         } catch (error) {
-          console.error("Error fetching total balances:", error);
+          console.error("Error calculating total balances from expenses:", error);
         }
       }
 
+      // Calculate totals from expenses
+      const totalExpensesAmount = expenses.reduce(
+        (sum, e) => sum + Number(e.total_amount || 0),
+        0
+      );
+      
+      const pendingAmountTotal = expenses
+        .filter((e) => ["submitted", "verified"].includes(e.status))
+        .reduce((sum, e) => sum + Number(e.total_amount || 0), 0);
+
       const stats: DashboardStats = {
-        totalExpenses: expenses.length,
-        pendingAmount: expenses
-          .filter((e) => ["submitted", "verified"].includes(e.status))
-          .reduce((sum, e) => sum + Number(e.total_amount), 0),
+        totalExpenses: userRole === "admin" ? totalExpensesAmount : expenses.length,
+        pendingAmount: pendingAmountTotal,
         approvedAmount: expenses
           .filter((e) => e.status === "approved")
-          .reduce((sum, e) => sum + Number(e.total_amount), 0),
+          .reduce((sum, e) => sum + Number(e.total_amount || 0), 0),
         currentBalance: profile?.balance ?? 0,
         pendingReviews,
         pendingReviewsAmount,
@@ -775,9 +785,9 @@ export default function Dashboard() {
     },
     {
       title: "Total Expenses",
-      value: stats.totalExpenses,
+      value: userRole === "admin" ? formatINR(stats.totalExpenses as number) : stats.totalExpenses,
       icon: Coins,
-      description: "All time expenses",
+      description: userRole === "admin" ? "Total amount of all expenses" : "All time expenses",
       highlight: false,
     },
     ...(userRole === "engineer" && stats.pendingReviews !== undefined
@@ -809,13 +819,6 @@ export default function Dashboard() {
       value: formatINR(stats.pendingAmount),
       icon: Clock,
       description: "Awaiting approval",
-      highlight: false,
-    },
-    {
-      title: "Approved Amount",
-      value: formatINR(stats.approvedAmount),
-      icon: CheckCircle,
-      description: "Approved expenses",
       highlight: false,
     },
     // Add total balance cards for admin
