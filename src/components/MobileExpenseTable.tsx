@@ -94,8 +94,8 @@ export function MobileExpenseTable({
               <div className="flex justify-between">
                 <span>Employee Balance:</span>
                 <span className={`font-medium ${(expense.user_balance ?? 0) >= (expense.total_amount ?? 0)
-                    ? 'text-green-600'
-                    : 'text-red-600'
+                  ? 'text-green-600'
+                  : 'text-red-600'
                   }`}>
                   {formatINR(expense.user_balance ?? 0)}
                 </span>
